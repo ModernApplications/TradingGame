@@ -62,41 +62,21 @@ fun TradingGameRuntime(modifier: Modifier = Modifier) {
 
     val game by remember { mutableStateOf(Game(iterations)) }
     var lastBotAction by remember { mutableStateOf("") }
-    var playerAction by remember { mutableStateOf("") }
     var lastPlayerAction by remember { mutableStateOf("") }
     var book by remember { mutableStateOf("") }
     var endgameMessage by remember { mutableStateOf("") }
+    var iteration by remember { mutableStateOf(0) }
     LaunchedEffect(key1 = Unit){
-        var i = 0
-        while (i in 0 until iterations && isActive) {
-            val info = game.book.processQuote(game.bot.quote(i))
+        while (iteration < iterations && isActive) {
+            val info = game.book.processQuote(game.bot.quote(iteration))
             lastBotAction = when (info.outcome) {
                 "Lift" -> "%d Offer Lifted".format(info.price)
                 "Hit" -> "%d Bid Hit".format(info.price)
                 else -> "%s %d".format(info.side, info.price)
             }
 
-            var j = 0
-            while (playerAction == "" && j < 1000) {
-                delay(1)
-                j ++
-            }
+            delay(1000)
             lastBotAction = ""
-            if (
-                playerAction == ""
-                || (playerAction == "h" && game.book.bids.isEmpty())
-                || (playerAction == "l" && game.book.offers.isEmpty())
-            ) {
-                lastPlayerAction = "No Action"
-            } else {
-                if (playerAction == "h") {
-                    lastPlayerAction = "Sold @ %d".format(game.book.bestBid())
-                } else if (playerAction == "l") {
-                    lastPlayerAction = "Bought @ %d".format(game.book.bestOffer())
-                }
-                game.processAction(playerAction.toCharArray()[0])
-            }
-            playerAction = ""
 
             val bookBuilder = StringBuilder()
             bookBuilder.append("----------------------\n")
@@ -104,33 +84,18 @@ fun TradingGameRuntime(modifier: Modifier = Modifier) {
                 bookBuilder.append("         | %d \n".format(o))
             }
             for (b in game.book.bids.asReversed()) {
-                bookBuilder.append(" %d |  \n".format(b))
+                if (b < 100) {
+                    bookBuilder.append(" %d   |  \n".format(b))
+                }
+                else {
+                    bookBuilder.append(" %d |  \n".format(b))
+                }
             }
             book = bookBuilder.toString()
 
-            val variableSpeed = Random.nextInt(timeLow, timeHigh)
+            delay((1000*Random.nextInt(timeLow, timeHigh)).toLong())
 
-            j = 0
-            while (playerAction == "" && j < 1000 * variableSpeed) {
-                delay(1)
-                j ++
-            }
-            if (
-                playerAction == ""
-                || (playerAction == "h" && game.book.bids.isEmpty())
-                || (playerAction == "l" && game.book.offers.isEmpty())
-            ) {
-                lastPlayerAction = "No Action"
-            } else {
-                if (playerAction == "h") {
-                    lastPlayerAction = "Sold @ %d".format(game.book.bestBid())
-                } else if (playerAction == "l") {
-                    lastPlayerAction = "Bought @ %d".format(game.book.bestOffer())
-                }
-                game.processAction(playerAction.toCharArray()[0])
-            }
-            playerAction = ""
-            i ++
+            iteration ++
         }
         lastBotAction = ""
         val res = StringBuilder()
@@ -142,23 +107,25 @@ fun TradingGameRuntime(modifier: Modifier = Modifier) {
         endgameMessage = res.toString()
     }
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = "Iterations Left: %d".format(iterations-iteration))
         Text(text = book)
         Text(text = "Last Bot Action: %s".format(lastBotAction))
         Text(text = "Your Last Trade: %s".format(lastPlayerAction))
         Text(text = endgameMessage)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(
-                onClick = { playerAction = "l" },
-            ) {
-                Text(text = "Lift")
-            }
-            Button(
-                onClick = { playerAction = "h" },
-            ) {
-                Text(text = "Hit")
-            }
+            Button(onClick = {
+                if ((iteration < iterations) && game.book.offers.isNotEmpty()) {
+                    lastPlayerAction = "Bought @ %d".format(game.book.bestOffer())
+                    game.lift()
+                }
+            }) { Text(text = "Lift") }
+            Button(onClick = {
+                if ((iteration < iterations) && game.book.bids.isNotEmpty()) {
+                    lastPlayerAction = "Sold @ %d".format(game.book.bestBid())
+                    game.hit()
+                }
+            }) { Text(text = "Hit") }
         }
-
     }
 }
 

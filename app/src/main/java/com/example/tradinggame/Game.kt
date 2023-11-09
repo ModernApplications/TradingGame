@@ -139,15 +139,15 @@ class Game(iterations: Int) {
     val settlement = normalSample(bot.theo, STD_SETTLEMENT.toDouble())
     val trades = mutableListOf<Int>()
 
-    fun processAction(action: Char) {
-        if (action == 'h') {
-            position --
-            trades.add(-1 * book.bestBid())
-            book.hit()
-        } else if (action == 'l') {
-            position ++
-            trades.add(book.bestOffer())
-            book.lift()
-        }
+    fun hit() {
+        position --
+        trades.add(-1 * book.bestBid())
+        book.hit()
+    }
+
+    fun lift() {
+        position ++
+        trades.add(book.bestOffer())
+        book.lift()
     }
 }
